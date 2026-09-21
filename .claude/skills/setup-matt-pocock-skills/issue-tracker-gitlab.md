@@ -12,7 +12,7 @@ Issues and specs for this repo live as GitLab issues. Use the [`glab`](https://g
 - **Close**: `glab issue close <number>`. `glab issue close` does not accept a closing comment, so post the explanation first with `glab issue note <number> --message "..."`, then close.
 - **Merge requests**: GitLab calls PRs "merge requests". Use `glab mr create`, `glab mr view`, `glab mr note`, etc., the same shape as `gh pr ...` with `mr` in place of `pr` and `note`/`--message` in place of `comment`/`--body`.
 
-Infer the repo from `git remote -v`; `glab` does this automatically when run inside a clone.
+Read the remote with `jj git remote list`. `glab` can't infer the project without a `.git` directory, so either `export GIT_DIR=$(jj git root)` once, or pass `-R`/`--repo` (`OWNER/REPO`, `GROUP/NAMESPACE/REPO`, or a full URL) on every call.
 
 ## Merge requests as a triage surface
 

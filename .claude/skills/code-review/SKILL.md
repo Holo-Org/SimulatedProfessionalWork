@@ -16,11 +16,11 @@ The issue tracker should have been provided to you. If `docs/agents/issue-tracke
 
 ### 1. Pin the fixed point
 
-Whatever the user said is the fixed point (a commit SHA, branch name, tag, `main`, `HEAD~5`, etc.). If they didn't specify one, ask for it.
+Whatever the user said is the fixed point (a change ID, commit ID, bookmark, tag, `trunk()`, `@--`, etc.). If they didn't specify one, ask for it.
 
-Capture the diff command once: `git diff <fixed-point>...HEAD` (three-dot, so the comparison is against the merge-base). Also note the list of commits via `git log <fixed-point>..HEAD --oneline`.
+Capture the diff command once: `jj diff --from <fixed-point> --git` (use `--from 'fork_point(<fixed-point> | @)'` for the merge-base comparison git's three-dot form gives). Also note the list of commits via `jj log -r '<fixed-point>..@' --no-graph -T 'change_id.short() ++ " " ++ description.first_line() ++ "\n"'`.
 
-Before going further, confirm the fixed point resolves (`git rev-parse <fixed-point>`) and the diff is non-empty. A bad ref or empty diff should fail here, not inside two parallel sub-agents.
+Before going further, confirm the fixed point resolves (`jj log -r '<fixed-point>'`) and the diff is non-empty. A bad revision or empty diff should fail here, not inside two parallel sub-agents.
 
 ### 2. Identify the spec source
 
@@ -28,7 +28,7 @@ Look for the originating spec, in this order:
 
 1. Issue references in the commit messages (`#123`, `Closes #45`, GitLab `!67`, etc.), fetched via the workflow in `docs/agents/issue-tracker.md`.
 2. A path the user passed as an argument.
-3. A spec file under `docs/`, `specs/`, or `.scratch/` matching the branch name or feature.
+3. A spec file under `docs/`, `specs/`, or `.scratch/` matching the bookmark or feature name.
 4. If nothing is found, ask the user where the spec is. If they say there isn't one, the **Spec** sub-agent will skip and report "no spec available".
 
 ### 3. Identify the standards sources

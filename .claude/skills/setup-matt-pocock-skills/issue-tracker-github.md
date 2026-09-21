@@ -11,7 +11,7 @@ Issues and specs for this repo live as GitHub issues. Use the `gh` CLI for all o
 - **Apply / remove labels**: `gh issue edit <number> --add-label "..."` / `--remove-label "..."`
 - **Close**: `gh issue close <number> --comment "..."`
 
-Infer the repo from `git remote -v`; `gh` does this automatically when run inside a clone.
+Read the remote with `jj git remote list`. `gh` can't infer the repo without a `.git` directory, so either `export GIT_DIR=$(jj git root)` once, or pass `--repo <owner>/<name>` (equivalently `GH_REPO`) on every call.
 
 ## Pull requests as a triage surface
 

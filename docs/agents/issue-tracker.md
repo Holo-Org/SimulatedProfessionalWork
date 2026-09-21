@@ -6,19 +6,15 @@ for issue *field values* — `gh` has no flag for those.
 
 ## Repo resolution — read this first
 
-This working copy is a **non-colocated Jujutsu repo**. There is no `.git` directory and
-`git remote -v` fails, so **`gh` cannot infer the repository** the way it does inside a git
-clone. Every command must name the repo:
+There is no `.git` directory here, so **`gh` cannot infer the repository**. Either point it at
+the store jj keeps, once per shell:
 
 ```
-gh issue list --repo Holo-Org/SimulatedProfessionalWork
+export GIT_DIR=$(jj git root)
 ```
 
-Or export it once per shell and drop the flag:
-
-```
-export GH_REPO=Holo-Org/SimulatedProfessionalWork
-```
+…or name the repo on every call, with `--repo Holo-Org/SimulatedProfessionalWork` or `GH_REPO`.
+`gh api` needs neither. Read the remote with `jj git remote list`.
 
 Requires **`gh` >= 2.100.0** for `--type`, `--parent`, `--blocked-by`, `--blocking`.
 Check with `gh --version` before assuming those flags exist.

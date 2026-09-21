@@ -12,4 +12,4 @@ Run typechecking regularly, single test files regularly, and the full test suite
 
 Once done, use /code-review to review the work.
 
-Commit your work to the current branch.
+Describe your work with `jj describe`, then `jj new` to start the next piece. Bookmarks don't move on their own: `jj tug` pulls the nearest one forward to `@-`. Don't push unless the user asked.
