@@ -8,7 +8,7 @@ Implement the work described by the user in the spec or tickets.
 
 Use /tdd where possible, at pre-agreed seams.
 
-Run typechecking regularly, single test files regularly, and the full test suite once at the end.
+Run typechecking regularly, single test files regularly, and the full test suite once at the end. Where there's a `.jj-ci.toml`, that's the list: `nu ~/Scripts/jj-ci/bin/jj-ci ci` runs it, `… checks` shows what would run (not yet installed as the `jj ci` alias).
 
 Once done, use /code-review to review the work.
 

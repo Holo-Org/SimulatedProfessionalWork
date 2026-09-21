@@ -9,6 +9,6 @@ description: "Use when you need to resolve a merge or rebase conflict."
 
 3. **Resolve each hunk.** Preserve both intents where possible. Where incompatible, pick the one matching the merge's stated goal and note the trade-off. Do **not** invent new behaviour. Edit the markers directly, or `jj resolve` (`-r <rev>` for a commit other than the working copy). Always resolve; never abandon the conflicted commit.
 
-4. Discover the project's **automated checks** and run them, typically typecheck, then tests, then format. Fix anything the merge broke.
+4. Discover the project's **automated checks** and run them, typically typecheck, then tests, then format. Where there's a `.jj-ci.toml`, that's the list: `nu ~/Scripts/jj-ci/bin/jj-ci ci` (not yet installed as the `jj ci` alias). Fix anything the merge broke.
 
 5. **Finish.** Confirm with `jj status` and `jj log -r 'conflicts()'` that nothing is left. `jj describe` if the commit still needs a message.
