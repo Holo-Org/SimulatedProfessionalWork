@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MAXWELL</title>
+<meta name="description" content="A compression engine that emits files existing decoders already understand, smaller than the tools that normally produce them.">
+<style>
+  :root {
+    --bg: #ffffff;
+    --fg: #1b1f23;
+    --muted: #5b6570;
+    --rule: #d8dee4;
+    --accent: #0a4d8c;
+    --accent-soft: #eef4fb;
+    --term-bg: #1c2128;
+    --term-fg: #d7dde4;
+    --term-prompt: #7ee0a0;
+    --term-dim: #8b949e;
+    --note-bg: #f5f7f9;
+    --note-bar: #0a4d8c;
+    --warn-bg: #fdf4f0;
+    --warn-bar: #b34700;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0f1216; --fg: #e4e8ec; --muted: #949ca6; --rule: #2a3038;
+      --accent: #6fb3f2; --accent-soft: #14202e;
+      --term-bg: #05070a; --term-fg: #d7dde4;
+      --note-bg: #161b22; --note-bar: #6fb3f2;
+      --warn-bg: #241813; --warn-bar: #e0854f;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0f1216; --fg: #e4e8ec; --muted: #949ca6; --rule: #2a3038;
+    --accent: #6fb3f2; --accent-soft: #14202e;
+    --term-bg: #05070a; --term-fg: #d7dde4;
+    --note-bg: #161b22; --note-bar: #6fb3f2;
+    --warn-bg: #241813; --warn-bar: #e0854f;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg);
+    font-family: var(--sans); font-size: 16px; line-height: 1.65;
+    -webkit-text-size-adjust: 100%;
+  }
+  .page { max-width: 820px; margin: 0 auto; padding: 0 16px 96px; }
+
+  /* ---- banner ---- */
+  .banner { padding: 72px 0 40px; border-bottom: 3px solid var(--fg); margin-bottom: 40px; }
+  .banner h1 {
+    font-size: clamp(2.6rem, 9vw, 4.2rem); line-height: 1; margin: 0;
+    font-weight: 800; letter-spacing: -0.02em;
+  }
+  .banner h1 .us { color: var(--accent); }
+  .banner .tag {
+    margin-top: 14px; font-family: var(--mono); color: var(--muted);
+    font-size: clamp(0.85rem, 3.2vw, 1.05rem); letter-spacing: 0.02em;
+  }
+  .delivery {
+    margin-top: 28px; font-family: var(--mono); font-size: 0.8rem;
+    text-transform: uppercase; letter-spacing: 0.12em; color: var(--muted);
+  }
+
+  h2 {
+    font-size: 1.6rem; margin: 56px 0 6px; font-weight: 700; letter-spacing: -0.01em;
+    padding-bottom: 8px; border-bottom: 1px solid var(--rule);
+  }
+  h2 .pnum { color: var(--accent); font-family: var(--mono); font-size: 0.95rem;
+             display: block; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 2px; }
+  h3 { font-size: 1.12rem; margin: 32px 0 4px; font-weight: 700; }
+  h4 { font-size: 0.98rem; margin: 22px 0 2px; font-weight: 700; color: var(--accent); }
+  p { margin: 12px 0; }
+  a { color: var(--accent); }
+
+  /* ---- preliminaries ---- */
+  .prelim {
+    border: 1px solid var(--rule); border-left: 4px solid var(--accent);
+    padding: 18px 20px; margin: 28px 0; background: var(--accent-soft);
+    font-family: var(--mono); font-size: 0.88rem;
+  }
+  .prelim dl { margin: 0; display: grid; grid-template-columns: max-content 1fr; gap: 6px 18px; }
+  .prelim dt { color: var(--muted); }
+  .prelim dd { margin: 0; }
+  @media (max-width: 560px) {
+    .prelim dl { grid-template-columns: 1fr; gap: 0 0; }
+    .prelim dd { margin: 0 0 10px; }
+  }
+
+  /* ---- checklist bullets ---- */
+  ul.check { list-style: none; padding-left: 0; margin: 14px 0; }
+  ul.check > li { position: relative; padding-left: 28px; margin: 9px 0; }
+  ul.check > li::before {
+    content: "\2713"; position: absolute; left: 4px; top: 0;
+    color: var(--accent); font-weight: 700;
+  }
+  ul.plain { padding-left: 22px; margin: 10px 0; }
+  ul.plain li { margin: 6px 0; }
+
+  /* ---- callouts ---- */
+  .note, .warn {
+    margin: 22px 0; padding: 14px 18px; font-size: 0.94rem;
+    border-left: 4px solid var(--note-bar); background: var(--note-bg);
+  }
+  .warn { border-left-color: var(--warn-bar); background: var(--warn-bg); }
+  .note p:first-child, .warn p:first-child { margin-top: 0; }
+  .note p:last-child, .warn p:last-child { margin-bottom: 0; }
+
+  /* ---- terminal ---- */
+  .term { margin: 22px 0; border-radius: 6px; overflow: hidden; border: 1px solid var(--rule); }
+  .term .bar {
+    background: var(--term-bg); color: var(--term-dim); font-family: var(--mono);
+    font-size: 0.72rem; padding: 5px 10px; display: flex; justify-content: space-between;
+    border-bottom: 1px solid rgba(255,255,255,0.08); letter-spacing: 0.08em;
+  }
+  .term pre {
+    margin: 0; background: var(--term-bg); color: var(--term-fg);
+    font-family: var(--mono); font-size: 0.82rem; line-height: 1.6;
+    padding: 14px 12px; overflow-x: auto; white-space: pre;
+  }
+  .term .p { color: var(--term-prompt); }
+  .term .c { color: var(--term-dim); }
+
+  code {
+    font-family: var(--mono); font-size: 0.88em;
+    background: var(--note-bg); padding: 1px 5px; border-radius: 3px;
+  }
+  .grammar {
+    font-family: var(--mono); font-size: 0.85rem; background: var(--note-bg);
+    border: 1px solid var(--rule); padding: 12px 14px; margin: 16px 0;
+    overflow-x: auto; white-space: pre;
+  }
+
+  table { border-collapse: collapse; width: 100%; margin: 20px 0; font-size: 0.88rem; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--rule); }
+  th { font-weight: 700; color: var(--muted); font-size: 0.78rem;
+       text-transform: uppercase; letter-spacing: 0.06em; }
+  .wrap { overflow-x: auto; }
+
+  footer {
+    margin-top: 72px; padding-top: 18px; border-top: 1px solid var(--rule);
+    font-family: var(--mono); font-size: 0.78rem; color: var(--muted);
+    display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header class="banner">
+    <h1>MAXWELL<span class="us">_</span></h1>
+    <div class="tag">&lt; A DEMON FOR YOUR ENTROPY /&gt;</div>
+    <div class="delivery">Delivery method: GitHub</div>
+  </header>
+
+  <div class="prelim">
+    <dl>
+      <dt>binary name</dt><dd>maxwell</dd>
+      <dt>language</dt><dd>Zig</dd>
+      <dt>compilation</dt><dd>via Makefile, including re, clean and fclean rules</dd>
+      <dt>build tool</dt><dd>zig build (the Makefile may delegate to it)</dd>
+    </dl>
+  </div>
+
+  <ul class="check">
+    <li>The totality of your source files, except all useless files (binary, temp files, objfiles, …), must be included in your delivery.</li>
+    <li>Error messages have to be written on the error output, and the program should then exit with the <strong>84</strong> error code (0 if there is no error).</li>
+    <li>Your repository must build from a fresh clone, on a machine that has never seen your project before. You will be asked to prove it.</li>
+  </ul>
+
+  <h2>Maxwell's demon</h2>
+
+  <p>In 1867, James Clerk Maxwell imagined a creature small enough to see individual
+  molecules. It sits at a trapdoor between two chambers of gas and does nothing but open and
+  close the door: fast molecules to the left, slow ones to the right. No work is performed, yet
+  one chamber grows hot and the other cold. The second law of thermodynamics, apparently,
+  is optional.</p>
+
+  <p>It took eighty years to find the flaw, and the answer turned out not to be about heat at
+  all. The demon must <em>know</em> which molecules are fast. It must remember. And a memory that
+  is never erased eventually fills — while erasing it, Landauer showed, costs exactly the
+  energy the demon thought it had saved. The demon does not break the second law. It pays for
+  every bit.</p>
+
+  <p>You are going to build the demon.</p>
+
+  <p>A compressor is the same trick performed on bytes: find the order hiding inside apparent
+  disorder, describe it more cheaply than it describes itself, and pay honestly for whatever
+  order was never there. Do it well and a file shrinks. Do it badly and — as information theory
+  guarantees, and as you will confirm the first time you feed your compressor its own output —
+  it grows.</p>
+
+  <h2>The project</h2>
+
+  <p>The formats you will be working with are frozen. Not by their specifications, which are
+  short and public, but by their <strong>decoders</strong>: several billion web browsers, archive
+  utilities, package managers and image viewers that already exist, already work, and will never
+  be updated for your benefit.</p>
+
+  <p>This is the constraint that makes the project interesting. You cannot invent a better
+  format, because nothing in the world could read it. What you <em>can</em> do is encode better
+  into the format that already exists — producing files that are strictly smaller, that every
+  deployed decoder still reads without modification, and that prove the improvement with a
+  number rather than an opinion.</p>
+
+  <p>So <code>maxwell</code> is not a clone of <code>gzip</code>. It is a tool that must
+  interoperate with <code>gzip</code> perfectly and then beat it.</p>
+
+  <div class="note">
+    <p><strong>Correctness has exactly one definition in this project, and it is not your own
+    test suite.</strong></p>
+    <ul class="plain">
+      <li>Your <strong>decoder</strong> must correctly inflate any valid stream, including
+      streams you did not produce.</li>
+      <li>Your <strong>encoder</strong> must emit streams that the reference implementation
+      decompresses back to the original bytes, exactly.</li>
+    </ul>
+    <p>Agreement with the reference implementation is the standard. Self-consistency is not
+    evidence of anything: a decoder and an encoder that are wrong in the same way will agree
+    with each other all day.</p>
+  </div>
+
+  <div class="warn">
+    <p>You are <strong>not</strong> asked to reproduce <code>gzip</code>'s output byte for byte.
+    That would require cloning another implementation's internal heuristics, and it would make
+    Part 3 impossible — beating the reference on ratio requires deliberately disagreeing with
+    it about which matches to choose.</p>
+  </div>
+
+  <h3>Invocation</h3>
+
+  <p>Your program reads from standard input and writes to standard output by default. You are
+  free to add richer invocation — files as arguments, in-place operation, a progress display —
+  as long as the stream behaviour keeps working.</p>
+
+  <div class="term">
+    <div class="bar"><span>&#8711;&nbsp;&nbsp;Terminal</span><span>&minus;&nbsp;+&nbsp;&times;</span></div>
+<pre><span class="p">$&gt;</span> ./maxwell --help
+USAGE
+    ./maxwell [-d] [-1..-9] [--format gzip|zlib|raw] [FILE]
+
+DESCRIPTION
+    -d, --decompress   inflate instead of deflate
+    -1 .. -9           effort level; -9 is slowest and smallest
+    --format           container to read or write (default: gzip)
+    FILE               input file; standard input if absent
+
+<span class="c"># round-trip through the reference implementation, both directions</span>
+<span class="p">$&gt;</span> gzip -c alice29.txt | ./maxwell -d | cmp - alice29.txt
+<span class="p">$&gt;</span> ./maxwell -9 alice29.txt | gzip -d | cmp - alice29.txt
+<span class="p">$&gt;</span> echo $?
+0</pre>
+  </div>
+
+  <p>The binary must also dispatch on <code>argv[0]</code>, so that a symbolic link named
+  <code>my_gzip</code> behaves as a drop-in replacement for the tool it is named after.</p>
+
+  <div class="term">
+    <div class="bar"><span>&#8711;&nbsp;&nbsp;Terminal</span><span>&minus;&nbsp;+&nbsp;&times;</span></div>
+<pre><span class="p">$&gt;</span> ln -s maxwell my_gzip
+<span class="p">$&gt;</span> ./my_gzip -d &lt; archive.gz &gt; archive
+<span class="p">$&gt;</span> ./maxwell --format zlib -6 &lt; payload &gt; payload.zz</pre>
+  </div>
+
+  <h2><span class="pnum">Part 0</span>The demon's ledger</h2>
+
+  <div class="note">
+    <p>The demon's whole problem was bookkeeping. So is yours.</p>
+  </div>
+
+  <p>This part is not about compression and it is never finished. It is what makes every other
+  part of this project believable.</p>
+
+  <h4>Build and dependencies</h4>
+
+  <p>Your toolchain must be pinned and reproducible. A defence may begin with a fresh clone on
+  an unfamiliar machine, and "it works on mine" ends the conversation badly. State which compiler
+  version you target and make that statement enforceable rather than aspirational.</p>
+
+  <h4>Tests</h4>
+
+  <ul class="check">
+    <li>Unit tests over the pieces: bit reader, canonical Huffman construction, window
+    copy semantics, container headers.</li>
+    <li>Integration tests over whole files, in both directions, against the reference
+    implementation.</li>
+    <li>A <strong>differential harness</strong>: generate input, process it with your
+    implementation, process it with the reference, and assert the results agree. Run it on
+    random data, on pathological data, and on the corpora.</li>
+    <li>You must be able to show how much of your code is covered by tests.</li>
+  </ul>
+
+  <div class="note">
+    <p>Compression bugs are unusually good at hiding. A decoder that is wrong about one rare
+    block type will process ninety-nine files perfectly and corrupt the hundredth. Fuzzing is not
+    a bonus here; it is how you find out.</p>
+  </div>
+
+  <h4>Continuous integration and delivery</h4>
+
+  <p>Automate all of the above. Every push must build the project, run the suite, and report
+  coverage. Your pipeline must additionally produce a working release binary without human
+  intervention — a build that cannot be shipped is a build nobody can check.</p>
+
+  <div class="warn">
+    <p><strong>Part 0 is mandatory at every defence.</strong> A fortnight in which the feature
+    work stalls but the pipeline stayed green and the fuzzer ran is a fortnight you can defend.
+    The reverse is not.</p>
+  </div>
+
+  <h2><span class="pnum">Part 1</span>Opening the door</h2>
+
+  <p>Read before you write. Implement a decoder for the DEFLATE format (RFC&nbsp;1951) inside
+  the gzip container (RFC&nbsp;1952).</p>
+
+  <p>The format divides a stream into <strong>blocks</strong>, each independently typed. Build
+  them in this order — the difficulty curve is steep and the first rung is very low:</p>
+
+  <ul class="check">
+    <li><strong>Stored blocks.</strong> No compression at all: a length, its complement, and the
+    bytes. Trivially testable, and it forces the container, the CRC32 and the framing into
+    existence before anything hard happens.</li>
+    <li><strong>Fixed Huffman blocks.</strong> The code tables are printed in the specification
+    itself, so there is no header to parse — only a bit reader to get right, and it must read
+    from the least significant bit upward.</li>
+    <li><strong>Dynamic Huffman blocks.</strong> The tables are transmitted per block, themselves
+    encoded with a code-length alphabet. Canonical code construction lives here.</li>
+    <li><strong>The sliding window.</strong> Matches reach up to 32&nbsp;KB backwards, and a
+    match may legally overlap its own output — a distance of 1 and a length of 200 means one
+    byte repeated two hundred times. Naïve <code>memcpy</code> will not do this correctly.</li>
+  </ul>
+
+  <div class="term">
+    <div class="bar"><span>&#8711;&nbsp;&nbsp;Terminal</span><span>&minus;&nbsp;+&nbsp;&times;</span></div>
+<pre><span class="c"># the target: any file, from anywhere, that you did not produce</span>
+<span class="p">$&gt;</span> ./maxwell -d &lt; /usr/share/man/man1/ls.1.gz | head -3
+.TH LS "1" "January 2024" "GNU coreutils 9.4" "User Commands"
+.SH NAME
+ls \- list directory contents
+
+<span class="p">$&gt;</span> ./maxwell -d &lt; truncated.gz
+maxwell: unexpected end of stream in dynamic block header
+<span class="p">$&gt;</span> echo $?
+84</pre>
+  </div>
+
+  <div class="note">
+    <p>Malformed input is not an edge case, it is a category. A decoder that trusts its input
+    is a security bug with a friendly interface. Decide early what your program does with a
+    truncated stream, an impossible code length, a distance pointing before the start of
+    output, or a declared size that disagrees with reality.</p>
+  </div>
+
+  <h2><span class="pnum">Part 2</span>Closing it again</h2>
+
+  <p>Now emit what you have learned to read. Your output must be decompressed correctly by the
+  reference implementation, not merely by your own decoder.</p>
+
+  <ul class="check">
+    <li><strong>Stored and fixed-Huffman output</strong> first. Valid, compatible, and
+    frequently larger than the input — which is the correct and instructive result.</li>
+    <li><strong>Dynamic Huffman output.</strong> Gather symbol frequencies, build optimal
+    prefix codes under the format's length limit, and transmit the tables.</li>
+    <li><strong>Match finding.</strong> LZ77 over a hash chain: index the last occurrences of
+    each three-byte sequence and walk backwards looking for the longest useful match. This is
+    where compression actually comes from, and where all the time goes.</li>
+    <li><strong>Effort levels.</strong> <code>-1</code> through <code>-9</code> must mean
+    something measurable — chain depth, lazy matching, when to end a block. A user choosing
+    <code>-1</code> is asking you to stop trying so hard.</li>
+  </ul>
+
+  <div class="grammar">a block is emitted when ending it is cheaper than continuing it
+      → the decision is yours, the format does not prescribe it
+      → and it is worth more ratio than most people expect</div>
+
+  <h2><span class="pnum">Part 3</span>Beating the demon</h2>
+
+  <p>You now have a working compressor. It is almost certainly worse than the one already
+  installed on your machine. Fix that.</p>
+
+  <p>From this point the project has two independent axes, and both must be measured. Report
+  them separately and never average them.</p>
+
+  <table>
+    <thead><tr><th>Axis</th><th>Meaning</th><th>Direction</th></tr></thead>
+    <tbody>
+      <tr><td>Ratio</td><td>compressed size &divide; original size</td><td>lower is better</td></tr>
+      <tr><td>Throughput</td><td>bytes per second, stated separately for each direction</td><td>higher is better</td></tr>
+    </tbody>
+  </table>
+
+  <h4>Measurement</h4>
+
+  <p>Build a benchmark harness over published corpora — Canterbury for routine runs, Silesia
+  for anything you intend to claim out loud. Results on files you chose yourself are not
+  results.</p>
+
+  <div class="term">
+    <div class="bar"><span>&#8711;&nbsp;&nbsp;Terminal</span><span>&minus;&nbsp;+&nbsp;&times;</span></div>
+<pre><span class="p">$&gt;</span> ./maxwell --bench corpus/canterbury
+file            original   maxwell -9   gzip -9    ratio      delta
+alice29.txt       152089        52104     54191    0.343     -3.85%
+cp.html            24603         7581      7981    0.308     -5.01%
+kennedy.xls      1029744       200458    206779    0.195     -3.06%
+ptt5              513216        48291     52382    0.094     -7.81%
+─────────────────────────────────────────────────────────────────
+total            3141622       730884    762938    0.233     -4.20%</pre>
+  </div>
+
+  <h4>Throughput</h4>
+
+  <p>Profile before optimising, and let the profile choose the target. Vectorisation is
+  available to you where the work is genuinely parallel, but note that most of a compressor's
+  time is spent in a data-dependent search that resists it — cache behaviour in the match
+  finder is usually worth more than instruction width, and the only way to know is to measure.</p>
+
+  <h4>Ratio</h4>
+
+  <p>Greedy match selection is not optimal. Taking the longest match available at each position
+  can force a worse choice immediately afterwards, and the cost of a match depends on the
+  Huffman code that has not been built yet. Choosing the parse by <strong>global</strong> cost
+  instead of local cost yields a meaningfully smaller file in the same format, readable by every
+  decoder that already exists.</p>
+
+  <div class="note">
+    <p>This is the result the project exists to produce: a file that any deployed tool reads
+    without modification, that is smaller than that tool could have made it. State the
+    improvement as a percentage, on a published corpus, against a named version of the
+    reference implementation.</p>
+  </div>
+
+  <h2>Bonus</h2>
+
+  <p>The tracks below are not required. They are the direction the project continues in, and
+  they are ordered by dependency rather than by difficulty.</p>
+
+  <ul class="check">
+    <li><strong>More containers.</strong> Raw DEFLATE and the zlib wrapper (RFC&nbsp;1950).
+    Cheap, and it widens what you can be tested against.</li>
+    <li><strong>A modern decoder.</strong> Zstandard reuses ideas you will already own — its
+    literals are Huffman-coded and its sequences are LZ77 triples — and adds one genuinely new
+    one: finite state entropy, read backwards, with three interleaved states. Implement from the
+    living format specification, not from the RFC, which is frozen and has known errata.</li>
+    <li><strong>A modern encoder.</strong> Zig's standard library can read Zstandard and cannot
+    write it. That is the gap this project is ultimately pointed at.</li>
+    <li><strong>Parallelism.</strong> Independent blocks compress independently. Decompression
+    is far less willing.</li>
+    <li><strong>Dictionaries.</strong> Priming the window with sample data, for corpora of many
+    small similar files.</li>
+  </ul>
+
+  <h2>Resources</h2>
+
+  <ul class="plain">
+    <li>RFC&nbsp;1951 — DEFLATE Compressed Data Format Specification</li>
+    <li>RFC&nbsp;1952 — GZIP File Format Specification</li>
+    <li>RFC&nbsp;1950 — ZLIB Compressed Data Format Specification</li>
+    <li><code>puff.c</code> — a deliberately slow, heavily commented reference inflater, written
+    to disambiguate the specification rather than to be fast</li>
+    <li>The Canterbury and Silesia corpora</li>
+    <li>Zstandard: <code>doc/zstd_compression_format.md</code>, the living specification</li>
+    <li>Shannon, <em>A Mathematical Theory of Communication</em> (1948) — for why there is a
+    floor, and where it is</li>
+  </ul>
+
+  <footer>
+    <span>MAXWELL</span>
+    <span>v 1.0</span>
+  </footer>
+
+</div>
+</body>
+</html>
