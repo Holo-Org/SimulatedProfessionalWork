@@ -158,7 +158,7 @@
   <div class="prelim">
     <dl>
       <dt>binary name</dt><dd>maxwell</dd>
-      <dt>language</dt><dd>OCaml</dd>
+      <dt>language</dt><dd>OxCaml (Jane Street's OCaml)</dd>
       <dt>compilation</dt><dd>via Makefile, including re, clean and fclean rules</dd>
       <dt>build tool</dt><dd>dune (the Makefile may delegate to it)</dd>
     </dl>
@@ -291,7 +291,7 @@ COMMANDS
   <h4>Build and dependencies</h4>
 
   <p>Pin everything: the compiler, the build tool and every library, at exact versions, identical
-  on every system you release for. A defence may begin with a fresh clone on an unfamiliar
+  on every machine that builds the project. A defence may begin with a fresh clone on an unfamiliar
   machine, and "it works on mine" ends the conversation badly.</p>
 
   <h4>Tests</h4>
@@ -331,10 +331,10 @@ COMMANDS
 
   <h4>Continuous integration and delivery</h4>
 
-  <p>Automate all of the above. Every push builds the project on macOS, Linux and Windows, runs
-  the suite, reports coverage and checks the documentation. A tag produces working release
-  binaries for all three systems without human intervention — a build that cannot be shipped is a
-  build nobody can check.</p>
+  <p>Automate all of the above. Every push builds the project on Linux x86-64 — the platform it is
+  evaluated on — runs the suite, reports coverage and checks the documentation. A tag produces a
+  working release binary without human intervention — a build that cannot be shipped is a build
+  nobody can check.</p>
 
   <div class="warn">
     <p><strong>Part 0 is mandatory at every defence.</strong> A fortnight in which the feature
@@ -475,7 +475,7 @@ total                                     412.6 KiB    118.4 KiB</pre>
     <li>Colour never the only carrier of meaning — in the terminal and in the heat map alike.</li>
     <li>Configuration from a project file and from environment variables, with command-line flags
     overriding both.</li>
-    <li>Shell completions for bash, zsh, fish, nushell and PowerShell.</li>
+    <li>Shell completions for bash, zsh, fish and nushell.</li>
     <li>A man page, and <code>--help</code> for every command.</li>
     <li>Errors that say where, why and what next — everywhere, not only in the decoder.</li>
   </ul>
@@ -578,11 +578,15 @@ Est savings: 13.5 KiB by serving it precompressed at level 9
     budget. <code>size-limit</code> is the tool to compare with.</li>
     <li><strong>Lazy matching and level tuning.</strong> Defer a match by one byte when the next
     position offers a better one, and make every level earn its place on the corpora.</li>
+    <li><strong>SIMD in the match finder.</strong> Compare sixteen bytes at a time when measuring a
+    match, instead of one. It is the loop lazy matching has just tuned, and exactly what OxCaml's
+    SIMD extensions are for.</li>
     <li><strong>Optimal parsing.</strong> Choose the division into literals and matches by global
     cost instead of greedily. The result is smaller than <code>gzip -9</code> and still read by
     every decoder that exists — the technique behind Zopfli.</li>
-    <li><strong>Parallel compression.</strong> Split the input into chunks, compress them on
-    separate OCaml 5 domains, and stitch the results into one valid stream.</li>
+    <li><strong>Parallel compression.</strong> Split the input into chunks, compress them in
+    parallel — OxCaml's type system rules out data races between them — and stitch the results into
+    one valid stream.</li>
     <li><strong>Zstandard, last.</strong> First a decoder, then an encoder. It reuses ideas you
     will already own — Huffman-coded literals, LZ77 sequences — and adds one genuinely new one:
     finite state entropy, read backwards, with three interleaved states. Implement it from the
@@ -609,7 +613,7 @@ Est savings: 13.5 KiB by serving it precompressed at level 9
 
   <footer>
     <span>MAXWELL</span>
-    <span>v 2.0</span>
+    <span>v 2.1</span>
   </footer>
 
 </div>

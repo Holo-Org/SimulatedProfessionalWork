@@ -1,5 +1,9 @@
 # OCaml, not Zig
 
+> **Partly superseded by [ADR 0006](./0006-oxcaml-on-linux.md):** the compiler is OxCaml, Linux
+> x86-64 is the platform that counts, Windows and static Linux binaries are dropped, and SIMD is
+> back.
+
 MAXWELL is written in **OCaml 5.5**. The author starts an internship in OCaml later this year, and a
 sizeable project in the language is worth more to that than one in Zig. This supersedes
 [ADR 0002](./0002-zig-pinned-to-0-16.md), which chose Zig while MAXWELL was a pure codec and kept it
