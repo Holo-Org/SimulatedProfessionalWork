@@ -14,7 +14,7 @@ on the record rather than hidden. Three cases:
 - **Claude worked alone, unsupervised** — Claude is the *author*, and I am the committer:
 
   ```
-  jj metaedit -r <rev> --author "Claude Opus 5 <noreply@anthropic.com>"
+  jj metaedit -r <rev> --author "Claude <model> <noreply@anthropic.com>"
   ```
 
   Set this when the change was produced end-to-end without me steering it. Being reviewed by me
@@ -23,13 +23,17 @@ on the record rather than hidden. Three cases:
 - **I mention Claude in the commit body** — add a trailer, keeping me as author:
 
   ```
-  Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+  Co-Authored-By: Claude <model> <noreply@anthropic.com>
   ```
 
   This is the normal case for work we did together, however much of the text Claude produced. If
   I named Claude in the message, the trailer belongs there too — don't wait to be asked.
 
 - **Neither applies** — no attribution, exactly as the global rule says.
+
+`<model>` is the model that actually did the work — `Opus 5.5`, for instance — never a name copied
+from this file or from an earlier commit. The model can change between sessions and even
+mid-session, and the attribution should record who really did it.
 
 Two mechanical notes. `signing.behavior = "force"` in this repo, so rewriting a commit re-signs it
 with my key: a commit authored by Claude still carries my signature as committer, which is correct
