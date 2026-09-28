@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>MAXWELL</title>
-<meta name="description" content="A compression engine that emits files existing decoders already understand, smaller than the tools that normally produce them.">
+<meta name="description" content="A tool that shows web developers the exact gzip cost of every source in their bundle, then makes that bundle smaller without changing anything a decoder needs.">
 <style>
   :root {
     --bg: #ffffff;
@@ -138,7 +138,6 @@
   th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--rule); }
   th { font-weight: 700; color: var(--muted); font-size: 0.78rem;
        text-transform: uppercase; letter-spacing: 0.06em; }
-  .wrap { overflow-x: auto; }
 
   footer {
     margin-top: 72px; padding-top: 18px; border-top: 1px solid var(--rule);
@@ -159,9 +158,9 @@
   <div class="prelim">
     <dl>
       <dt>binary name</dt><dd>maxwell</dd>
-      <dt>language</dt><dd>Zig</dd>
+      <dt>language</dt><dd>OCaml</dd>
       <dt>compilation</dt><dd>via Makefile, including re, clean and fclean rules</dd>
-      <dt>build tool</dt><dd>zig build (the Makefile may delegate to it)</dd>
+      <dt>build tool</dt><dd>dune (the Makefile may delegate to it)</dd>
     </dl>
   </div>
 
@@ -185,85 +184,100 @@
   energy the demon thought it had saved. The demon does not break the second law. It pays for
   every bit.</p>
 
-  <p>You are going to build the demon.</p>
-
   <p>A compressor is the same trick performed on bytes: find the order hiding inside apparent
-  disorder, describe it more cheaply than it describes itself, and pay honestly for whatever
-  order was never there. Do it well and a file shrinks. Do it badly and — as information theory
-  guarantees, and as you will confirm the first time you feed your compressor its own output —
-  it grows.</p>
+  disorder, describe it more cheaply than it describes itself, and pay honestly for whatever order
+  was never there. Every compressed file is a ledger of those payments — and the people who pay
+  the bill, on every page load, have never been shown it.</p>
 
-  <h2>The project</h2>
+  <p>You are going to build the demon, and then hand its ledger to the people who pay.</p>
 
-  <p>The formats you will be working with are frozen. Not by their specifications, which are
-  short and public, but by their <strong>decoders</strong>: several billion web browsers, archive
-  utilities, package managers and image viewers that already exist, already work, and will never
-  be updated for your benefit.</p>
+  <h2>The user</h2>
 
-  <p>This is the constraint that makes the project interesting. You cannot invent a better
-  format, because nothing in the world could read it. What you <em>can</em> do is encode better
-  into the format that already exists — producing files that are strictly smaller, that every
-  deployed decoder still reads without modification, and that prove the improvement with a
-  number rather than an opinion.</p>
+  <p>MAXWELL is for <strong>web developers who ship JavaScript bundles compressed with gzip</strong>
+  — still roughly half of the compressed traffic on the web.</p>
 
-  <p>So <code>maxwell</code> is not a clone of <code>gzip</code>. It is a tool that must
-  interoperate with <code>gzip</code> perfectly and then beat it.</p>
+  <p>A bundle is assembled from hundreds of sources: the developer's own files, and every library
+  they pulled in. Browsers download it compressed, so what each source really costs a visitor is
+  its share of the <em>compressed</em> bundle. That is the number a developer needs to decide what
+  to cut, and it is the number their tools cannot give them.</p>
+
+  <p>Bundle analysers such as webpack-bundle-analyzer, rollup-plugin-visualizer and
+  source-map-explorer all <em>estimate</em> it the same way: they compress each source on its own
+  and add up the results. But a source's compressed cost depends on everything around it — a
+  library compresses better next to code that repeats its patterns — so the estimate is wrong in
+  ways nobody can see. The maintainer of source-map-explorer calls exact per-module gzip size
+  "almost impossible".</p>
+
+  <p>The compressed bundle already contains the exact answer: every bit in it pays for some
+  specific byte of the output. MAXWELL reads the real compressed stream, accounts for every bit,
+  and follows the bundle's source map back to the source each byte came from. Its user gets:</p>
+
+  <ul class="check">
+    <li><strong>the exact gzip cost of every source</strong> — not an estimate — in the terminal;</li>
+    <li><strong>a report they can share</strong>: one self-contained page showing where the cost goes;</li>
+    <li><strong>a smaller bundle</strong>, compressed by MAXWELL, that every browser already reads.</li>
+  </ul>
+
+  <div class="note">
+    <p>MAXWELL reports the exact <em>gzip</em> cost. A site that serves its bundles with another
+    encoding pays a different one, and MAXWELL does not claim to know it. Say so wherever it could
+    be misread.</p>
+  </div>
+
+  <h3>What correctness means</h3>
 
   <div class="note">
     <p><strong>Correctness has exactly one definition in this project, and it is not your own
     test suite.</strong></p>
     <ul class="plain">
-      <li>Your <strong>decoder</strong> must correctly inflate any valid stream, including
+      <li>Your <strong>decoder</strong> must correctly decompress any valid stream, including
       streams you did not produce.</li>
       <li>Your <strong>encoder</strong> must emit streams that the reference implementation
       decompresses back to the original bytes, exactly.</li>
     </ul>
-    <p>Agreement with the reference implementation is the standard. Self-consistency is not
-    evidence of anything: a decoder and an encoder that are wrong in the same way will agree
-    with each other all day.</p>
+    <p>Agreement with an independent implementation is the standard. Self-consistency is not
+    evidence of anything: a decoder and an encoder that are wrong in the same way will agree with
+    each other all day.</p>
   </div>
 
   <div class="warn">
     <p>You are <strong>not</strong> asked to reproduce <code>gzip</code>'s output byte for byte.
-    That would require cloning another implementation's internal heuristics, and it would make
-    Part 3 impossible — beating the reference on ratio requires deliberately disagreeing with
-    it about which matches to choose.</p>
+    That would require cloning another implementation's internal heuristics, and it would forbid
+    ever producing smaller output than the reference — which means choosing matches differently
+    from it.</p>
   </div>
 
   <h3>Invocation</h3>
 
-  <p>Your program reads from standard input and writes to standard output by default. You are
-  free to add richer invocation — files as arguments, in-place operation, a progress display —
-  as long as the stream behaviour keeps working.</p>
+  <p><code>maxwell</code> is driven by commands. Each one reads the file named on its command
+  line, or standard input when none is given, and writes to standard output unless told
+  otherwise.</p>
 
   <div class="term">
     <div class="bar"><span>&#8711;&nbsp;&nbsp;Terminal</span><span>&minus;&nbsp;+&nbsp;&times;</span></div>
 <pre><span class="p">$&gt;</span> ./maxwell --help
 USAGE
-    ./maxwell [-d] [-1..-9] [--format gzip|zlib|raw] [FILE]
+    ./maxwell COMMAND [OPTION]… [FILE]
 
-DESCRIPTION
-    -d, --decompress   inflate instead of deflate
-    -1 .. -9           effort level; -9 is slowest and smallest
-    --format           container to read or write (default: gzip)
-    FILE               input file; standard input if absent
+COMMANDS
+    report       the exact gzip cost of every source in a bundle
+    compress     compress a file into the gzip format
+    decompress   decompress a gzip file
 
-<span class="c"># round-trip through the reference implementation, both directions</span>
-<span class="p">$&gt;</span> gzip -c alice29.txt | ./maxwell -d | cmp - alice29.txt
-<span class="p">$&gt;</span> ./maxwell -9 alice29.txt | gzip -d | cmp - alice29.txt
+<span class="p">$&gt;</span> ./maxwell report dist/app.js.gz                     <span class="c"># finds the source map on its own</span>
+<span class="p">$&gt;</span> ./maxwell report dist/app.js.gz --html report.html
+<span class="p">$&gt;</span> ./maxwell compress -9 dist/app.js                    <span class="c"># writes dist/app.js.gz</span>
+<span class="p">$&gt;</span> ./maxwell decompress dist/app.js.gz | cmp - dist/app.js
 <span class="p">$&gt;</span> echo $?
 0</pre>
   </div>
 
-  <p>The binary must also dispatch on <code>argv[0]</code>, so that a symbolic link named
-  <code>my_gzip</code> behaves as a drop-in replacement for the tool it is named after.</p>
+  <p>When invoked under any other name — through a symbolic link named <code>my_gzig</code>, for
+  instance — MAXWELL behaves as <code>gzip</code>, flags included, so a script that calls
+  <code>gzip</code> can call it instead.</p>
 
-  <div class="term">
-    <div class="bar"><span>&#8711;&nbsp;&nbsp;Terminal</span><span>&minus;&nbsp;+&nbsp;&times;</span></div>
-<pre><span class="p">$&gt;</span> ln -s maxwell my_gzip
-<span class="p">$&gt;</span> ./my_gzip -d &lt; archive.gz &gt; archive
-<span class="p">$&gt;</span> ./maxwell --format zlib -6 &lt; payload &gt; payload.zz</pre>
-  </div>
+  <p>The figures in this subject's examples are illustrative. The exact layout of every output is
+  yours to decide — in the documentation, before the code (see Part 0).</p>
 
   <h2><span class="pnum">Part 0</span>The demon's ledger</h2>
 
@@ -276,20 +290,20 @@ DESCRIPTION
 
   <h4>Build and dependencies</h4>
 
-  <p>Your toolchain must be pinned and reproducible. A defence may begin with a fresh clone on
-  an unfamiliar machine, and "it works on mine" ends the conversation badly. State which compiler
-  version you target and make that statement enforceable rather than aspirational.</p>
+  <p>Pin everything: the compiler, the build tool and every library, at exact versions, identical
+  on every system you release for. A defence may begin with a fresh clone on an unfamiliar
+  machine, and "it works on mine" ends the conversation badly.</p>
 
   <h4>Tests</h4>
 
   <ul class="check">
-    <li>Unit tests over the pieces: bit reader, canonical Huffman construction, window
-    copy semantics, container headers.</li>
+    <li>Unit tests over the pieces: the bit reader, canonical Huffman construction, the window's
+    copy semantics, the container, source-map decoding, and the arithmetic of attribution.</li>
     <li>Integration tests over whole files, in both directions, against the reference
     implementation.</li>
     <li>A <strong>differential harness</strong>: generate input, process it with your
-    implementation, process it with the reference, and assert the results agree. Run it on
-    random data, on pathological data, and on the corpora.</li>
+    implementation and with at least one independent one, and assert that they agree — on random
+    data, on pathological data, and on the corpora.</li>
     <li>You must be able to show how much of your code is covered by tests.</li>
   </ul>
 
@@ -299,11 +313,28 @@ DESCRIPTION
     a bonus here; it is how you find out.</p>
   </div>
 
+  <h4>Documentation leads implementation</h4>
+
+  <p>User-facing behaviour is documented before it is implemented, and the documentation is
+  merged first. It is the specification the code must meet, not a description of whatever the
+  code happened to do.</p>
+
+  <ul class="check">
+    <li>The reference — <code>--help</code>, the man page, the shell completions and the reference
+    pages — comes from a single definition of the command line. What can be generated is generated
+    and committed, and CI regenerates it and fails on any difference.</li>
+    <li>What cannot be generated — tutorials, how-to guides, explanations — is merged before the
+    implementation it describes, and CI checks that it was.</li>
+    <li>Every user-facing feature is therefore two issues: its documentation, blocking its
+    implementation.</li>
+  </ul>
+
   <h4>Continuous integration and delivery</h4>
 
-  <p>Automate all of the above. Every push must build the project, run the suite, and report
-  coverage. Your pipeline must additionally produce a working release binary without human
-  intervention — a build that cannot be shipped is a build nobody can check.</p>
+  <p>Automate all of the above. Every push builds the project on macOS, Linux and Windows, runs
+  the suite, reports coverage and checks the documentation. A tag produces working release
+  binaries for all three systems without human intervention — a build that cannot be shipped is a
+  build nobody can check.</p>
 
   <div class="warn">
     <p><strong>Part 0 is mandatory at every defence.</strong> A fortnight in which the feature
@@ -328,61 +359,180 @@ DESCRIPTION
     from the least significant bit upward.</li>
     <li><strong>Dynamic Huffman blocks.</strong> The tables are transmitted per block, themselves
     encoded with a code-length alphabet. Canonical code construction lives here.</li>
-    <li><strong>The sliding window.</strong> Matches reach up to 32&nbsp;KB backwards, and a
-    match may legally overlap its own output — a distance of 1 and a length of 200 means one
-    byte repeated two hundred times. Naïve <code>memcpy</code> will not do this correctly.</li>
+    <li><strong>The sliding window.</strong> Matches reach up to 32&nbsp;KB backwards, and a match
+    may legally overlap its own output — a distance of 1 and a length of 200 means one byte
+    repeated two hundred times. A naïve memory copy will not do this correctly.</li>
   </ul>
+
+  <h4>Errors a user can act on</h4>
+
+  <p>Malformed input is not an edge case, it is a category: a truncated stream, an impossible code
+  length, a distance pointing before the start of the output, a checksum or a declared size that
+  disagrees with reality. A decoder that trusts its input is a security bug with a friendly
+  interface.</p>
+
+  <p>Every failure must say <em>where</em> it happened — the byte, the bit and the block —
+  <em>why</em>, in words its user understands, and, whenever there is one, <em>what to do
+  next</em>.</p>
 
   <div class="term">
     <div class="bar"><span>&#8711;&nbsp;&nbsp;Terminal</span><span>&minus;&nbsp;+&nbsp;&times;</span></div>
 <pre><span class="c"># the target: any file, from anywhere, that you did not produce</span>
-<span class="p">$&gt;</span> ./maxwell -d &lt; /usr/share/man/man1/ls.1.gz | head -3
+<span class="p">$&gt;</span> ./maxwell decompress &lt; /usr/share/man/man1/ls.1.gz | head -2
 .TH LS "1" "January 2024" "GNU coreutils 9.4" "User Commands"
 .SH NAME
-ls \- list directory contents
 
-<span class="p">$&gt;</span> ./maxwell -d &lt; truncated.gz
-maxwell: unexpected end of stream in dynamic block header
+<span class="p">$&gt;</span> ./maxwell decompress truncated.gz
+maxwell: the stream ends in the middle of block 3 (dynamic Huffman)
+  at byte 18 432, bit 5 — the file is shorter than its own contents say
+  hint: it was probably cut short in transfer; fetch it again
 <span class="p">$&gt;</span> echo $?
 84</pre>
   </div>
 
-  <div class="note">
-    <p>Malformed input is not an edge case, it is a category. A decoder that trusts its input
-    is a security bug with a friendly interface. Decide early what your program does with a
-    truncated stream, an impossible code length, a distance pointing before the start of
-    output, or a declared size that disagrees with reality.</p>
-  </div>
+  <h2><span class="pnum">Part 2</span>Counting every bit</h2>
 
-  <h2><span class="pnum">Part 2</span>Closing it again</h2>
+  <p>Now make the decoder say what it read. This part is the minimum viable product: the first
+  time MAXWELL tells its user something their current tools can only estimate.</p>
 
-  <p>Now emit what you have learned to read. Your output must be decompressed correctly by the
-  reference implementation, not merely by your own decoder.</p>
+  <h4>Keeping the books</h4>
+
+  <p>Every bit the decoder reads pays for some specific byte of the output:</p>
 
   <ul class="check">
-    <li><strong>Stored and fixed-Huffman output</strong> first. Valid, compatible, and
-    frequently larger than the input — which is the correct and instructive result.</li>
-    <li><strong>Dynamic Huffman output.</strong> Gather symbol frequencies, build optimal
-    prefix codes under the format's length limit, and transmit the tables.</li>
-    <li><strong>Match finding.</strong> LZ77 over a hash chain: index the last occurrences of
-    each three-byte sequence and walk backwards looking for the longest useful match. This is
-    where compression actually comes from, and where all the time goes.</li>
-    <li><strong>Effort levels.</strong> <code>-1</code> through <code>-9</code> must mean
-    something measurable — chain depth, lazy matching, when to end a block. A user choosing
-    <code>-1</code> is asking you to stop trying so hard.</li>
+    <li>a <strong>literal</strong>'s bits belong to its one byte;</li>
+    <li>a <strong>match</strong>'s bits are shared across every byte it copies;</li>
+    <li>block headers and Huffman tables are <strong>overhead</strong> — report them as such, and
+    never lose them.</li>
   </ul>
+
+  <p>The costs you attribute, overhead included, must add up exactly to the size of the
+  compressed stream. That is a property, and you can test it.</p>
+
+  <h4>Lines first</h4>
+
+  <p>Attribute costs to the lines of the bundle before anything else. It needs nothing but the
+  decoder, and it already answers a real question — where in this file does the cost sit? —
+  for a bundle that comes without a source map.</p>
+
+  <h4>Then sources</h4>
+
+  <p>A source map (ECMA-426) records where every position of a bundle came from. Decode its
+  <code>mappings</code> — Base64 VLQ — and follow each output byte back to its source.</p>
+
+  <ul class="check">
+    <li>Find the map on your own: a bundle names it in a comment at its end
+    (<code>//# sourceMappingURL=app.js.map</code>). <code>--map</code> overrides it.</li>
+    <li>Report, for each source, its raw size next to its gzip cost, sorted by cost. A source that
+    is large but cheap compresses well; one that is small but expensive is dense — an inlined
+    image, a table of hashes — and is usually the one worth a look.</li>
+    <li>Test against bundles and maps produced by real bundlers — esbuild, Rollup or Vite,
+    webpack — not against maps written by hand. Real ones are messier than the specification.</li>
+  </ul>
+
+  <div class="term">
+    <div class="bar"><span>&#8711;&nbsp;&nbsp;Terminal</span><span>&minus;&nbsp;+&nbsp;&times;</span></div>
+<pre><span class="p">$&gt;</span> ./maxwell report dist/app.js.gz
+source                                     raw size    gzip cost
+node_modules/chart.js/dist/chart.js       184.2 KiB     48.1 KiB
+node_modules/moment/moment.js              62.5 KiB     13.9 KiB
+src/assets/logo.svg (inlined)              12.3 KiB      9.4 KiB
+src/pages/Dashboard.tsx                    41.0 KiB      8.7 KiB
+… 214 more sources                        112.6 KiB     37.1 KiB
+(headers and code tables)                         —      1.2 KiB
+────────────────────────────────────────────────────────────────
+total                                     412.6 KiB    118.4 KiB</pre>
+  </div>
+
+  <h2><span class="pnum">Part 3</span>Showing the user</h2>
+
+  <p>A table in a terminal answers the question for the person who asked it. Now answer it for
+  everyone they work with.</p>
+
+  <h4>The report</h4>
+
+  <p><code>report --html</code> writes one self-contained HTML page: no network access, no external
+  files, nothing to install. It opens in any browser, and it can be attached to a pull request or
+  published by CI.</p>
+
+  <ul class="check">
+    <li>Every source, sorted by cost, with its raw size.</li>
+    <li>A heat map of the bundle: where the cost sits, byte by byte, readable at a glance.</li>
+    <li>Nothing in it that depends on colour alone.</li>
+  </ul>
+
+  <div class="note">
+    <p>Your user already has tools like this: webpack-bundle-analyzer, rollup-plugin-visualizer and
+    source-map-explorer all produce an HTML page. Study them. Yours must be at least as easy to
+    read — and its figures are exact where theirs are estimated.</p>
+  </div>
+
+  <h4>Ease of use</h4>
+
+  <ul class="check">
+    <li>Colour that respects <code>NO_COLOR</code>, and turns itself off when the output is not a
+    terminal.</li>
+    <li>Colour never the only carrier of meaning — in the terminal and in the heat map alike.</li>
+    <li>Configuration from a project file and from environment variables, with command-line flags
+    overriding both.</li>
+    <li>Shell completions for bash, zsh, fish, nushell and PowerShell.</li>
+    <li>A man page, and <code>--help</code> for every command.</li>
+    <li>Errors that say where, why and what next — everywhere, not only in the decoder.</li>
+  </ul>
+
+  <div class="warn">
+    <p>Ease of use is not a coat of paint applied at the end. A feature that is hard to discover,
+    hard to configure, or that fails with an unreadable error is <strong>unfinished</strong>, however
+    well it works.</p>
+  </div>
+
+  <h4>Documentation</h4>
+
+  <p>Your user reads documentation to get something done, so organise it by what they are trying
+  to do:</p>
+
+  <ul class="plain">
+    <li>a <strong>tutorial</strong> that takes them from a bundle to their first report;</li>
+    <li><strong>how-to guides</strong> for the tasks they come back for;</li>
+    <li>a <strong>reference</strong> covering every command, flag, configuration key, environment
+    variable and exit code;</li>
+    <li><strong>explanations</strong>: how attribution works, and what "exact gzip cost" does and
+    does not mean.</li>
+  </ul>
+
+  <p>Publish it as a site, in English. Its home page is the place to compare MAXWELL with the tools
+  your user already has.</p>
+
+  <h2><span class="pnum">Part 4</span>Closing the door</h2>
+
+  <p>Now emit what you have learned to read — and give your user a smaller bundle.</p>
+
+  <h4>The encoder</h4>
+
+  <ul class="check">
+    <li><strong>Stored and fixed-Huffman output</strong> first. Valid, compatible, and frequently
+    larger than the input — which is the correct and instructive result.</li>
+    <li><strong>Dynamic Huffman output.</strong> Gather symbol frequencies, build optimal prefix
+    codes under the format's length limit, and transmit the tables.</li>
+    <li><strong>Match finding.</strong> LZ77 over a hash chain: index the last occurrences of each
+    three-byte sequence and walk backwards looking for the longest useful match. This is where
+    compression actually comes from, and where all the time goes.</li>
+    <li><strong>Effort levels.</strong> <code>-1</code> through <code>-9</code> must mean something
+    measurable — chain depth, when to end a block. A user choosing <code>-1</code> is asking you
+    to stop trying so hard.</li>
+  </ul>
+
+  <p>Your output must be decompressed exactly by the reference implementation — not merely by
+  your own decoder.</p>
 
   <div class="grammar">a block is emitted when ending it is cheaper than continuing it
       → the decision is yours, the format does not prescribe it
       → and it is worth more ratio than most people expect</div>
 
-  <h2><span class="pnum">Part 3</span>Beating the demon</h2>
+  <h4>Measuring it</h4>
 
-  <p>You now have a working compressor. It is almost certainly worse than the one already
-  installed on your machine. Fix that.</p>
-
-  <p>From this point the project has two independent axes, and both must be measured. Report
-  them separately and never average them.</p>
+  <p>Two axes, measured on published corpora — Canterbury for routine runs, Silesia for anything
+  you intend to claim out loud — and never averaged:</p>
 
   <table>
     <thead><tr><th>Axis</th><th>Meaning</th><th>Direction</th></tr></thead>
@@ -392,64 +542,51 @@ maxwell: unexpected end of stream in dynamic block header
     </tbody>
   </table>
 
-  <h4>Measurement</h4>
+  <h4>Meeting the user where they are</h4>
 
-  <p>Build a benchmark harness over published corpora — Canterbury for routine runs, Silesia
-  for anything you intend to claim out loud. Results on files you chose yourself are not
-  results.</p>
+  <ul class="check">
+    <li><code>report</code> also accepts an uncompressed bundle, and compresses it the way the
+    user's server does: with zlib, at the server's level, taken from the configuration or the
+    command line. Only zlib reproduces what a zlib-based server sends; any other encoder, yours
+    included, emits different bytes.</li>
+    <li>When there is a saving worth mentioning, the report says so in one line: how much smaller
+    the bundle would be, compressed ahead of time at the highest level. nginx compresses at level
+    1 by default, so there usually is one. The configuration can silence it.</li>
+    <li>Under the name <code>my_gzig</code>, MAXWELL is a drop-in <code>gzip</code>, so the build
+    steps that already call <code>gzip</code> can use it unchanged.</li>
+  </ul>
 
   <div class="term">
     <div class="bar"><span>&#8711;&nbsp;&nbsp;Terminal</span><span>&minus;&nbsp;+&nbsp;&times;</span></div>
-<pre><span class="p">$&gt;</span> ./maxwell --bench corpus/canterbury
-file            original   maxwell -9   gzip -9    ratio      delta
-alice29.txt       152089        52104     54191    0.343     -3.85%
-cp.html            24603         7581      7981    0.308     -5.01%
-kennedy.xls      1029744       200458    206779    0.195     -3.06%
-ptt5              513216        48291     52382    0.094     -7.81%
-─────────────────────────────────────────────────────────────────
-total            3141622       730884    762938    0.233     -4.20%</pre>
-  </div>
+<pre><span class="p">$&gt;</span> ./maxwell report dist/app.js --level 1        <span class="c"># compressed the way the server does</span>
+<span class="c">…</span>
+total                                     412.6 KiB    131.9 KiB
+Est savings: 13.5 KiB by serving it precompressed at level 9
 
-  <h4>Throughput</h4>
-
-  <p>Profile before optimising, and let the profile choose the target. Vectorisation is
-  available to you where the work is genuinely parallel, but note that most of a compressor's
-  time is spent in a data-dependent search that resists it — cache behaviour in the match
-  finder is usually worth more than instruction width, and the only way to know is to measure.</p>
-
-  <h4>Ratio</h4>
-
-  <p>Greedy match selection is not optimal. Taking the longest match available at each position
-  can force a worse choice immediately afterwards, and the cost of a match depends on the
-  Huffman code that has not been built yet. Choosing the parse by <strong>global</strong> cost
-  instead of local cost yields a meaningfully smaller file in the same format, readable by every
-  decoder that already exists.</p>
-
-  <div class="note">
-    <p>This is the result the project exists to produce: a file that any deployed tool reads
-    without modification, that is smaller than that tool could have made it. State the
-    improvement as a percentage, on a published corpus, against a named version of the
-    reference implementation.</p>
+<span class="p">$&gt;</span> ./maxwell compress -9 dist/app.js
+<span class="p">$&gt;</span> gzip -dc dist/app.js.gz | cmp - dist/app.js     <span class="c"># read back by the reference</span>
+<span class="p">$&gt;</span> ln -s maxwell my_gzig &amp;&amp; ./my_gzig -k -9 dist/app.js</pre>
   </div>
 
   <h2>Bonus</h2>
 
-  <p>The tracks below are not required. They are the direction the project continues in, and
-  they are ordered by dependency rather than by difficulty.</p>
+  <p>None of these is required. They are the direction the project continues in, in the order
+  they should be taken.</p>
 
   <ul class="check">
-    <li><strong>More containers.</strong> Raw DEFLATE and the zlib wrapper (RFC&nbsp;1950).
-    Cheap, and it widens what you can be tested against.</li>
-    <li><strong>A modern decoder.</strong> Zstandard reuses ideas you will already own — its
-    literals are Huffman-coded and its sequences are LZ77 triples — and adds one genuinely new
-    one: finite state entropy, read backwards, with three interleaved states. Implement from the
+    <li><strong>Cost budgets in CI.</strong> Fail a build when a source's cost goes over its
+    budget. <code>size-limit</code> is the tool to compare with.</li>
+    <li><strong>Lazy matching and level tuning.</strong> Defer a match by one byte when the next
+    position offers a better one, and make every level earn its place on the corpora.</li>
+    <li><strong>Optimal parsing.</strong> Choose the division into literals and matches by global
+    cost instead of greedily. The result is smaller than <code>gzip -9</code> and still read by
+    every decoder that exists — the technique behind Zopfli.</li>
+    <li><strong>Parallel compression.</strong> Split the input into chunks, compress them on
+    separate OCaml 5 domains, and stitch the results into one valid stream.</li>
+    <li><strong>Zstandard, last.</strong> First a decoder, then an encoder. It reuses ideas you
+    will already own — Huffman-coded literals, LZ77 sequences — and adds one genuinely new one:
+    finite state entropy, read backwards, with three interleaved states. Implement it from the
     living format specification, not from the RFC, which is frozen and has known errata.</li>
-    <li><strong>A modern encoder.</strong> Zig's standard library can read Zstandard and cannot
-    write it. That is the gap this project is ultimately pointed at.</li>
-    <li><strong>Parallelism.</strong> Independent blocks compress independently. Decompression
-    is far less willing.</li>
-    <li><strong>Dictionaries.</strong> Priming the window with sample data, for corpora of many
-    small similar files.</li>
   </ul>
 
   <h2>Resources</h2>
@@ -457,18 +594,22 @@ total            3141622       730884    762938    0.233     -4.20%</pre>
   <ul class="plain">
     <li>RFC&nbsp;1951 — DEFLATE Compressed Data Format Specification</li>
     <li>RFC&nbsp;1952 — GZIP File Format Specification</li>
-    <li>RFC&nbsp;1950 — ZLIB Compressed Data Format Specification</li>
-    <li><code>puff.c</code> — a deliberately slow, heavily commented reference inflater, written
-    to disambiguate the specification rather than to be fast</li>
+    <li>ECMA-426 — the source map format specification</li>
+    <li><code>puff.c</code> — a deliberately slow, heavily commented reference decoder, written to
+    disambiguate the specification rather than to be fast</li>
     <li>The Canterbury and Silesia corpora</li>
+    <li>Diátaxis — a framework for organising documentation by what its reader is trying to do</li>
     <li>Zstandard: <code>doc/zstd_compression_format.md</code>, the living specification</li>
     <li>Shannon, <em>A Mathematical Theory of Communication</em> (1948) — for why there is a
     floor, and where it is</li>
   </ul>
 
+  <p>Tools to compare with: webpack-bundle-analyzer, rollup-plugin-visualizer,
+  source-map-explorer, Lighthouse, size-limit, ouch, and Zopfli.</p>
+
   <footer>
     <span>MAXWELL</span>
-    <span>v 1.0</span>
+    <span>v 2.0</span>
   </footer>
 
 </div>
