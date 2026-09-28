@@ -1,8 +1,8 @@
 # MAXWELL
 
-A compression engine that emits files existing decoders already understand, smaller than the
-tools that normally produce them. It starts gzip-compatible and climbs toward a modern
-entropy-coded format.
+A tool that shows web developers the exact compressed cost of every source in their
+gzip-compressed bundle, and then makes that bundle smaller without changing anything a decoder
+needs. Its engine is a DEFLATE codec.
 
 ## Language
 
@@ -11,20 +11,50 @@ entropy-coded format.
 **MAXWELL**:
 The project. Named for Maxwell's demon — the thought experiment about extracting order from
 disorder, which is what an entropy coder does.
-_Avoid_: my_gzip (that is the compatibility symlink, not the project)
+_Avoid_: my_gzig (that is the compatibility symlink, not the project)
 
 **maxwell**:
-The binary. Dispatches on `argv[0]`, so a `my_gzip` symlink gives drop-in gzip behaviour.
+The binary. Dispatches on `argv[0]`, so a `my_gzig` symlink gives drop-in gzip behaviour.
 
 **Oracle**:
-The reference implementation a result is checked against — `zlib` vendored through `zig cc`, or
-the system `gzip`. Correctness is defined as agreement with the oracle, never as self-consistency.
+The reference implementation a result is checked against — zlib, or the system `gzip`.
+Correctness is defined as agreement with the oracle, never as self-consistency.
 _Avoid_: reference (ambiguous — the *spec* is also a reference)
 
 **Corpus**:
 A published, fixed collection of test files used to measure ratio and throughput. Canterbury for
 routine runs, Silesia for anything claimed publicly.
 _Avoid_: test data, dataset, samples
+
+### What MAXWELL tells its user
+
+**Bundle**:
+The single JavaScript file a web developer ships, assembled by a bundler from many sources.
+_Avoid_: build output, artifact
+
+**Source**:
+An original file listed in a bundle's source map — what the developer actually wrote.
+_Avoid_: module (it collides with the modules of whatever language MAXWELL is written in), file
+
+**Source map**:
+The file, specified by ECMA-426, that maps every position in a bundle back to the source it came
+from.
+
+**Attribution**:
+Assigning every compressed bit to the output byte it produced, and through the source map to the
+source that byte came from. A literal's bits belong to its one byte; a match's bits are shared
+across every byte it copies.
+
+**Cost**:
+The number of compressed bits attributed to something — a byte, a region, or a source. Always
+compressed bits, never raw size, and always the *gzip* cost: a site serving another encoding pays a
+different one.
+_Avoid_: size, weight
+
+**Report**:
+What MAXWELL shows its user about a bundle: the cost of each source, either in the terminal or as
+one self-contained HTML page.
+_Avoid_: analysis, output, dashboard
 
 ### Formats and operations
 
@@ -36,12 +66,14 @@ The container of RFC 1952 that wraps a DEFLATE stream with a header, CRC32 and o
 Distinct from **zlib**, the different and smaller container of RFC 1950.
 
 **inflate**:
-To decompress. The decoder inflates.
+To decompress. The decoder inflates. This is the word for the codec and the design documents; the
+command a user types is `decompress`, because the command line speaks its user's language.
 _Avoid_: decode, uncompress, extract
 
 **deflate** (lowercase):
 To compress. The encoder deflates. Lowercase distinguishes the *act* from **DEFLATE** the format.
-_Avoid_: encode, compress, zip
+This is the word for the codec and the design documents; the command a user types is `compress`.
+_Avoid_: encode, zip — and *compress*, except as that command
 
 **Block**:
 The unit a DEFLATE stream is divided into, each independently typed as stored, fixed-Huffman or

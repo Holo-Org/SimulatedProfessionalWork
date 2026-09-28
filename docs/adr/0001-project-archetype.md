@@ -11,12 +11,12 @@ external specification with public, machine-checkable test data*. The fortnightl
 has an unarguable progress metric that is not the author's own opinion — a count of conformance
 cases passing, not a claim about effort spent.
 
-**The project is `my_gzip`**: a gzip-compatible compression tool — a DEFLATE decoder first, then
-an encoder, then sustained work on compression ratio and throughput. It is scoped as the Unix
-*utility*, not merely a codec library, so it is checked on two levels at once: streams it emits
-must be decodable by the reference tool, and streams the reference tool emits must be decodable
-by it. The yardstick is therefore free and unarguable, because `gzip` is already installed on
-every machine a jury owns.
+**The project is MAXWELL**: a gzip-compatible compression engine — a DEFLATE decoder first, then an
+encoder. It is checked on two levels at once: streams it emits must be decodable by the reference
+tool, and streams the reference tool emits must be decodable by it. The yardstick is therefore free
+and unarguable, because `gzip` is already installed on every machine a jury owns.
+[ADR 0003](./0003-a-tool-for-web-developers.md) later re-centred MAXWELL on a user — web developers
+who ship gzip-compressed bundles — without changing this yardstick.
 
 It also carries two independent axes of improvement — **compression ratio** and **throughput** —
 so a fortnight that fails to move one can still move the other. That matters for a module graded
