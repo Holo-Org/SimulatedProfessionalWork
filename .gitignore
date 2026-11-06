@@ -3,3 +3,5 @@
 devenv.local.nix
 devenv.local.yaml
 .direnv*
+!.emacs-addon/
+.emacs-addon/.direnv

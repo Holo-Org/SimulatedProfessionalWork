@@ -59,3 +59,14 @@ See `docs/agents/triage-labels.md`.
 
 Single-context: `CONTEXT.md` and `docs/adr/` at the repo root.
 See `docs/agents/domain.md`.
+
+### Emacs add-on
+
+**This section overrides the `emacs-addon` skill's rule that `.emacs-addon/` stays untracked and
+is never committed, for this repo only.** That rule still holds in every other project.
+
+The rule assumes a shared project, where one person's editor setup should not reach the others.
+This one is solo, and how the work is conducted is part of what is graded, so the add-on is
+committed with the code to show the tooling behind it. `.gitignore` un-ignores the folder and
+keeps its `.direnv` cache ignored. The skill's step 2 ignore check is expected to fail here: skip
+it.
