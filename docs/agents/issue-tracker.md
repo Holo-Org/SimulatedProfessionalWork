@@ -6,23 +6,13 @@ for issue *field values* — `gh` has no flag for those.
 
 ## Repo resolution — read this first
 
-There is no `.git` directory here, so **`gh` cannot infer the repository**. Either point it at
-the store jj keeps, once per shell:
-
-```
-export GIT_DIR=$(jj git root)
-```
-
-…or name the repo on every call, with `--repo Holo-Org/SimulatedProfessionalWork` or `GH_REPO`.
+There is no `.git` directory here, so **`gh` cannot infer the repository**.
+Name the repo on every call, with `--repo Holo-Org/SimulatedProfessionalWork` or set `GH_REPO`.
 `gh api` needs neither. Read the remote with `jj git remote list`.
-
-Requires **`gh` >= 2.100.0** for `--type`, `--parent`, `--blocked-by`, `--blocking`.
-Check with `gh --version` before assuming those flags exist.
 
 ## Conventions
 
-- **Create**: `gh issue create --title "..." --body "..." --type "<type>"`. Use a heredoc for
-  multi-line bodies. Add `--parent <n>` for a sub-issue, `--blocked-by <n>` / `--blocking <n>`
+- **Create**: `gh issue create --title "..." --body "..." --type "<type> --label "01.status: <state>`. Use a heredoc for multi-line bodies. Add `--parent <n>` for a sub-issue, `--blocked-by <n>` / `--blocking <n>`
   for dependencies, `-p SimulatedProfessionalWork` to place it on the board.
 - **Read**: `gh issue view <n> --comments`. Add `--json id,number,title,body,labels,issueType,issueFieldValues`
   when you need the node ID or the field values.
@@ -32,63 +22,26 @@ Check with `gh --version` before assuming those flags exist.
 - **Labels**: `gh issue edit <n> --add-label "..."` / `--remove-label "..."`
 - **Close**: `gh issue close <n> --comment "..."`
 
-## Issue types
+## Issue types (the triage "category")
 
-Seven org-level types, set with `--type "<name>"` on create or edit:
+Every issue has exactly one type, set with `--type` on create or edit. Triage `bug` is `Bug`; triage `enhancement` is `Improvement`. The others are `Agile`, `Question`, `Extra Deliverable`, `Build` and `Documentation`. If none fits, ask the maintainer.
 
-| Type | Use for |
-| --- | --- |
-| `Bug` | An unexpected problem or behavior |
-| `Agile` | Planning items — Epic, Story, Task (pair with `Hierarchy`) |
-| `Question` | Not a code issue; something is unclear |
-| `Extra Delivrable` | Proposed addition outside the original scope *(name is misspelled upstream — match it exactly)* |
-| `Build` | New build method, packaging, package manager |
-| `Documentation` | Clarify usage, behaviour, or structure |
-| `Improvement` | General improvement to the codebase |
-
-**Rule — contextual typing.** Planning work an agent breaks down (`/to-tickets`, `/wayfinder`)
-gets type `Agile` plus a `Hierarchy` value. Reported work gets the matching concrete type
-(`Bug`, `Improvement`, `Documentation`, `Build`) plus its applicable fields (see below).
+**Rule — contextual typing.** Planning work an agent breaks down (`/to-tickets`, or the execution
+issues a `/wayfinder` map hands off to) gets type `Agile` plus a `Hierarchy` value. Reported work
+gets the matching concrete type (`Bug`, `Improvement`, `Documentation`, `Build`) plus its
+applicable fields (see below). A Wayfinder map and its tickets are neither: they are `Question`,
+see [Wayfinding operations](#wayfinding-operations).
 
 ## Issue fields
 
-Nine org-level fields, all inherited by this repo. **`gh` cannot set these.** They move only
-through the GraphQL `setIssueFieldValue` mutation, keyed by node ID.
+`gh issue` does not expose issue fields; use `gh api graphql`. When creating an issue, fill at least the fields pinned to its type:
 
-| Field | Type | Node ID | Applies to |
-| --- | --- | --- | --- |
-| `Priority` | single-select | `IFSS_kgDOAjyc-g` | everything |
-| `Effort` | single-select | `IFSS_kgDOAjyc_Q` | everything |
-| `Hierarchy` | single-select | `IFSS_kgDOAtCAjg` | `Agile` items |
-| `Kind` | single-select | `IFSS_kgDOAtCCkQ` | `Bug` only |
-| `Origin` | single-select | `IFSS_kgDOAtCC1g` | `Bug` only |
-| `Category` | single-select | `IFSS_kgDOAtCF5w` | `Improvement` / `Build` |
-| `Start date` | date | `IFD_kgDOAjyc-w` | everything |
-| `Target date` | date | `IFD_kgDOAjyc_A` | everything |
-| `Target release` | text | `IFT_kgDOAtCBAw` | everything |
-
-### Option IDs
-
-`Priority` (`03.priority: `) — Urgent `IFSSO_kgDOA-n6zw` · High `IFSSO_kgDOA-n60A` ·
-Medium `IFSSO_kgDOA-n60Q` · Low `IFSSO_kgDOA-n60g` · Bonus `IFSSO_kgDOBO02QQ`
-
-`Effort` (`04.size: `) — XL `IFSSO_kgDOA-n60w` · L `IFSSO_kgDOBO03aA` · M `IFSSO_kgDOA-n61A` ·
-S `IFSSO_kgDOA-n61Q` · XS `IFSSO_kgDOBO03aQ`
-
-`Hierarchy` (`02.layer: `) — Epic `IFSSO_kgDOBO0_Ig` · Feature `IFSSO_kgDOBO0_Iw` ·
-Story `IFSSO_kgDOBO0_JA` · Task `IFSSO_kgDOBO0_JQ` · ~~Initative `IFSSO_kgDOBO0_IQ`~~ **DO NOT USE**
-
-`Kind` (`1.type: `) — Logic `IFSSO_kgDOBO1CrQ` · Crash `IFSSO_kgDOBO1Crg` · Security `IFSSO_kgDOBO1Crw` ·
-Concurrency `IFSSO_kgDOBO1CsA` · Configuration `IFSSO_kgDOBO1CsQ` · Data `IFSSO_kgDOBO1Csg` ·
-Build / Dependency `IFSSO_kgDOBO1Csw`
-
-`Origin` (`1.type: `) — Regression `IFSSO_kgDOBO1DKw` · New `IFSSO_kgDOBO1DLA` · Legacy `IFSSO_kgDOBO1DLQ`
-
-`Category` (`1.type: `) — CI `IFSSO_kgDOBO1Ijg` · Build `IFSSO_kgDOBO1Ijw` · Refactor `IFSSO_kgDOBO1IkA` ·
-Cleanup `IFSSO_kgDOBO1IkQ` · Performance `IFSSO_kgDOBO1Ikg` · Compatibility `IFSSO_kgDOBO1Ikw` ·
-UI / UX `IFSSO_kgDOBO1IlA` · Dependencies `IFSSO_kgDOBO1IlQ` · E2E Tests `IFSSO_kgDOBO1Ilg` ·
-Integration Tests `IFSSO_kgDOBO1Ilw` · Unit Tests `IFSSO_kgDOBO1ImA` · Contract Tests `IFSSO_kgDOBO1ImQ` ·
-Fuzz Tests `IFSSO_kgDOBO1Img`
+- `Bug`: Kind, Origin
+- `Improvement`: Target release, Category (pick the matching option)
+- `Build`, `Documentation`: Target release
+- `Agile`: Priority, Effort, Start date, Target date, Hierarchy
+- `Extra Deliverable`: none
+- `Question`: Wayfinder, only for Wayfinder issues
 
 Re-derive any of these with:
 
@@ -128,60 +81,31 @@ mutation($issueId: ID!) {
 `singleSelectOptionId`, `multiSelectOptionIds`, `textValue`, `dateValue`, `numberValue`.
 `delete: true` clears a value.
 
-### Suggest vs. write — the policy
+### Suggest vs. write
 
-The mutation is agent-aware. `suggest: true` stores the value as a **pending suggestion for
-human review** instead of applying it; `confidence` is `LOW | MEDIUM | HIGH`; `rationale` is
-free text, max 280 characters.
+Set the value when the maintainer stated it or the issue makes it certain. Otherwise propose it with `suggest: true`, a `confidence` (`LOW`, `MEDIUM` or `HIGH`) and a `rationale`. Look up IDs by name first:
 
-- **Judgement calls → `suggest: true`.** `Priority`, `Effort`, `Hierarchy`, `Target date`.
-  These are the maintainer's calls; an agent proposes, a human accepts.
-- **Facts → write directly** (`suggest` omitted). `Kind` and `Origin` on a bug the agent just
-  diagnosed, `Category` on work the agent itself scoped.
-- **Always set `rationale`**, on suggestions and direct writes alike. It is the audit trail.
-- Set `confidence` honestly. `LOW` on a suggestion is a useful signal, not a failure.
+```
+gh api graphql -f query='query{organization(login:"Holo-Org"){
+  issueTypes(first:20){nodes{id name pinnedFields{... on IssueFieldSingleSelect{name} ... on IssueFieldText{name} ... on IssueFieldDate{name}}}}
+  issueFields(first:50){nodes{... on IssueFieldSingleSelect{id name options{id name}} ... on IssueFieldText{id name} ... on IssueFieldDate{id name}}}}}'
+```
 
-## Status model
+Set a value on an existing issue (`textValue` and `dateValue` exist for text and date fields):
 
-Status is representable three ways here. Each owns one thing; do not cross the streams.
+```
+mutation{setIssueFieldValue(input:{issueId:"<id>", issueFields:[
+  {fieldId:"<field>", singleSelectOptionId:"<option>", suggest:true, confidence:MEDIUM, rationale:"..."}]}){issue{id}}}
+```
 
-| Concern | Owner | Agent behaviour |
-| --- | --- | --- |
-| Blocking | GitHub **native dependencies** (`--blocked-by` / `--blocking`) | Create and read these. A ticket is unblocked when every blocker is closed. |
-| Triage state | `01.status: ` **labels** | Read and write these — this is what `/triage` operates on. |
-| Workflow state | Board **`Status`** field | Human view. Agents read it; they do not drive it. |
+`createIssue` accepts `issueTypeId`, `parentIssueId` and the same `issueFields` list.
 
-**Never hand-apply `01.status: blocked`.** Blocking is derived from native dependencies; the
-label is cosmetic and will drift. Same for `01.status: in-progress` — an assignee plus the
-board column is the real signal.
+## Pull requests
 
-## Project board
-
-Board **`SimulatedProfessionalWork`** (org `Holo-Org`, number **5**, `PVT_kwDODnMOUs4BkLui`).
-
-Add an issue on create with `-p SimulatedProfessionalWork`, or after the fact with
-`gh issue edit <n> --add-project SimulatedProfessionalWork`.
-
-`Status` options: Backlog · Ready · Created · In Progress · In Review · Changes Requested ·
-Waiting Merge · Merged · Fixed · Cancelled · — plus a **`Sprint`** iteration field
-(`PVTIF_lADODnMOUs4BkLuizhi9O7c`) and `Number of day worked on`.
-
-The board's `Priority`, `Effort` and `Hierarchy` columns **are the org issue fields themselves**,
-linked directly into GitHub Projects — not project-level copies. So `setIssueFieldValue` is the
-only write needed: set the issue field and the board column follows. Do **not** also call
-`updateProjectV2ItemFieldValue` for these three; that would be writing to the same value twice.
-
-`Status`, `Sprint` and `Number of day worked on` are genuine project-level fields and do go
-through `updateProjectV2ItemFieldValue` — but per the status model above, agents leave those
-to humans.
-
-## Pull requests as a triage surface
-
-**PRs as a request surface: no.** _(Set to `yes` if this repo starts treating external PRs as
-feature requests; `/triage` reads this flag.)_
-
-GitHub shares one number space across issues and PRs, so a bare `#42` may be either: resolve
-with `gh pr view 42` and fall back to `gh issue view 42`.
+- PRs are not a triage surface and take no `01.status:` labels.
+- Every PR gets one or two `2.component:` labels (`gh pr create --label`). If none fits, create one: `gh label create "2.component: <name>" --color A78BFA --description "..." --repo Holo-Org/SimulatedProfessionalWork`. All component labels use `#A78BFA`, except `2.component: uncategorized`.
+- `2.component: uncategorized` means a human found no fitting component. The first agent to see it creates and/or assigns the right component label(s) and removes `uncategorized`.
+- A PR that needs more than two components should be split into a stack. Open the PRs from jj bookmarks as usual, then link them bottom to top with `gh stack link <pr> <pr> ...`; it works from PR numbers, URLs or branch names without local stack tracking, so it needs no `.git` directory (see `gh stack link --help`).
 
 ## When a skill says "publish to the issue tracker"
 
@@ -193,34 +117,11 @@ Create a GitHub issue, typed per the contextual rule above, placed on board 5.
 
 ## Wayfinding operations
 
-Used by `/wayfinder`. The **map** is a parent issue with **child** issues as tickets.
+Used by `/wayfinder`. Wayfinder issues have type `Question` and the Wayfinder field set, and take no status label.
 
-- **Map**: an issue of type `Agile` with `Hierarchy` = `02.layer: Epic`, holding the
-  Notes / Decisions-so-far / Fog body.
-- **Child ticket**: `gh issue create --parent <map> --type Agile`, with `Hierarchy` =
-  `02.layer: Task` (or `Story` for a multi-part child). Native sub-issues, so the map shows
-  `Sub-issues progress` on the board.
-- **Blocking**: `gh issue create --blocked-by <n>` or `gh issue edit <n> --add-blocked-by <m>`.
-  Read back with `gh api repos/Holo-Org/SimulatedProfessionalWork/issues/<n> --jq .issue_dependencies_summary.blocked_by`
-  (open blockers only — the live gate).
-- **Frontier**: list the map's open children, drop any with an open blocker or an assignee;
-  first in map order wins.
+- **Map**: an issue with type `Question` and Wayfinder = `05.wayfinder: map`, holding the Notes / Decisions-so-far / Fog body.
+- **Child ticket**: type `Question`, Wayfinder = `05.wayfinder: research`, `grilling`, `prototype` or `task`, created with `parentIssueId` = the map (or `addSubIssue(input:{issueId, subIssueId})` afterwards). The assignee is the claim.
+- **Blocking**: native dependencies, `addBlockedBy(input:{issueId:"<blocked>", blockingIssueId:"<blocker>"})`. Open blockers show in `issueDependenciesSummary.blockedBy`.
+- **Frontier query**: the map's `subIssues` that are open, have `issueDependenciesSummary.blockedBy == 0` and no assignee; first in map order wins.
 - **Claim**: `gh issue edit <n> --add-assignee @me`, the session's first write.
-- **Resolve**: `gh issue comment <n> --body "<answer>"`, `gh issue close <n>`, then append a
-  context pointer (gist + link) to the map's Decisions-so-far.
-
-> **Gap:** `/wayfinder` distinguishes ticket types `research` / `prototype` / `grilling` / `task`,
-> and this repo has no vocabulary for that. Interim rule: use issue type `Question` for
-> `research` and `grilling`, `Agile` + `Hierarchy: Task` for `prototype` and `task`. Replace this
-> with dedicated labels if the distinction starts mattering.
-
-## Known upstream typos
-
-These are exact-match strings. Match them as written until they are fixed at the org level.
-
-| Where | Current | Intended |
-| --- | --- | --- |
-| `Hierarchy` option | `O2.layer: Story` — leading letter **O**, not zero | `02.layer: Story` |
-| Issue type | `Extra Delivrable` | `Extra Deliverable` |
-| `Hierarchy` option | `02.layer: Initative` | `02.layer: Initiative` |
-| `Improvement` description | "Genral improvement" | "General improvement" |
+- **Resolve**: `gh issue comment <n> --body "<answer>"`, then `gh issue close <n>`, then append a context pointer to the map's Decisions-so-far.
