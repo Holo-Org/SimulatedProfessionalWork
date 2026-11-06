@@ -5,3 +5,5 @@ devenv.local.yaml
 .direnv*
 !.emacs-addon/
 .emacs-addon/.direnv
+/_build/
+/maxwell
