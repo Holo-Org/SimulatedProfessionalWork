@@ -11,10 +11,9 @@ needs. Its engine is a DEFLATE codec.
 **MAXWELL**:
 The project. Named for Maxwell's demon — the thought experiment about extracting order from
 disorder, which is what an entropy coder does.
-_Avoid_: my_gzig (that is the compatibility symlink, not the project)
 
 **maxwell**:
-The binary. Dispatches on `argv[0]`, so a `my_gzig` symlink gives drop-in gzip behaviour.
+The binary.
 
 **Oracle**:
 The reference implementation a result is checked against — zlib, or the system `gzip`.

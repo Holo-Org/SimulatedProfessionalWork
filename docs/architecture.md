@@ -4,8 +4,7 @@
 ## The product
 
 MAXWELL reads in one direction and writes in the other. Both directions sit behind a single
-command line: `report`, `compress` and `decompress` — or `gzip`'s own flags, when it is invoked as
-`my_gzig`.
+command line: `report`, `compress` and `decompress`.
 
 ```mermaid
 flowchart LR
