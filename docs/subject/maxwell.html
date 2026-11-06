@@ -272,10 +272,6 @@ COMMANDS
 0</pre>
   </div>
 
-  <p>When invoked under any other name — through a symbolic link named <code>my_gzig</code>, for
-  instance — MAXWELL behaves as <code>gzip</code>, flags included, so a script that calls
-  <code>gzip</code> can call it instead.</p>
-
   <p>The figures in this subject's examples are illustrative. The exact layout of every output is
   yours to decide — in the documentation, before the code (see Part 0).</p>
 
@@ -552,8 +548,6 @@ total                                     412.6 KiB    118.4 KiB</pre>
     <li>When there is a saving worth mentioning, the report says so in one line: how much smaller
     the bundle would be, compressed ahead of time at the highest level. nginx compresses at level
     1 by default, so there usually is one. The configuration can silence it.</li>
-    <li>Under the name <code>my_gzig</code>, MAXWELL is a drop-in <code>gzip</code>, so the build
-    steps that already call <code>gzip</code> can use it unchanged.</li>
   </ul>
 
   <div class="term">
@@ -564,8 +558,7 @@ total                                     412.6 KiB    131.9 KiB
 Est savings: 13.5 KiB by serving it precompressed at level 9
 
 <span class="p">$&gt;</span> ./maxwell compress -9 dist/app.js
-<span class="p">$&gt;</span> gzip -dc dist/app.js.gz | cmp - dist/app.js     <span class="c"># read back by the reference</span>
-<span class="p">$&gt;</span> ln -s maxwell my_gzig &amp;&amp; ./my_gzig -k -9 dist/app.js</pre>
+<span class="p">$&gt;</span> gzip -dc dist/app.js.gz | cmp - dist/app.js     <span class="c"># read back by the reference</span></pre>
   </div>
 
   <h2>Bonus</h2>
