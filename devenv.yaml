@@ -1,0 +1,10 @@
+# yaml-language-server: $schema=https://devenv.sh/devenv.schema.json
+inputs:
+  nixpkgs:
+    url: github:cachix/devenv-nixpkgs/rolling
+  # No `follows`: OxCaml's flake is built against the nixpkgs it pins itself.
+  oxcaml:
+    url: github:oxcaml/oxcaml
+  ocamlformat-oxcaml:
+    url: github:oxcaml/ocamlformat/jane
+    flake: false
