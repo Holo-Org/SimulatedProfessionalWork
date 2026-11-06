@@ -52,8 +52,7 @@ See `docs/agents/issue-tracker.md`.
 
 ### Triage labels
 
-The five canonical triage roles map to this repo's `01.status: `-prefixed labels.
-See `docs/agents/triage-labels.md`.
+`01.status:` labels (the five triage roles plus `in-progress` and `blocked`), mandatory on every issue except Wayfinder issues. See `docs/agents/triage-labels.md`.
 
 ### Domain docs
 
